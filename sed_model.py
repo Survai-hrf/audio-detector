@@ -55,7 +55,7 @@ class SEDWrapper(pl.LightningModule):
         return output_dict["clipwise_output"], output_dict["framewise_output"]
 
     def inference(self, x):
-        self.device_type = next(self.parameters()).device
+        self.device_type = 'cpu' #next(self.parameters()).device
         self.eval()
         x = torch.from_numpy(x).float().to(self.device_type)
         output_dict = self.sed_model(x, None, True)

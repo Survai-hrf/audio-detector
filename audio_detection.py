@@ -3,6 +3,7 @@ import numpy as np
 import librosa
 import moviepy.editor as mp
 import json
+from collections import Counter
 # in the notebook, we only can use one GPU
 os.environ["CUDA_VISIBLE_DEVICES"]="0"
 
@@ -48,7 +49,7 @@ def audio_detection(video_id):
    
    # AudioSet class list and model checkpoint
    data = np.load('class_hier_map.npy', allow_pickle=True)
-   model_path = 'workspace/ckpt/htsat_audioset_pretrain.ckpt'
+   model_path = 'htsat_audioset_pretrain.ckpt'
 
    
    class Audio_Classification:
@@ -169,34 +170,36 @@ def audio_detection(video_id):
 
    # performs audio classification on clips in directory
    results_dict = {}
+   unfiltered = []
+   # performs audio classification on clips in directory
    Audiocls = Audio_Classification(model_path, config)
-
    for clip in audio_list:
-      pred_label, pred_prob = Audiocls.predict(f'video/{file_name}/{clip}') 
-      results = {clip:{data[pred_label][0]: pred_prob.astype('float64')}}
-      results_dict.update(results)
+      pred_label, pred_prob = Audiocls.predict(f'video/{file_name}/{clip}')
+      unfiltered.append((clip, data[pred_label][0]))
 
+   filtered = []
    # converts class detections to per second 
-   per_second_dict = {}
-   for key, val in results_dict.items():
-      slice_ts = key.split('.')[0].split('_')[1:]
+   for entry in unfiltered:
+      slice_ts = entry[0].split('.')[0].split('_')[1:]
       for sec in range(int(slice_ts[0]), int(slice_ts[-1])):
-         per_second_dict[sec+1]=val
+         filtered.append((sec+1, entry[1]))
 
-   # removes classes that are not in classes list
-   for key, val in list(per_second_dict.items()):
-      if list(val.keys())[0] not in classes:
-         per_second_dict.pop(key)
+   # filters to only classes in filtered_classes
+   audioData = [(i[0], GetKey(i[1])) for i in filtered if i[1] in classes]
+   # Counts # of detections per class 
+   totals = dict(Counter([i[1] for i in audioData]))
 
-   # overwrites classes to filtered classes keys
-   for key, val in per_second_dict.items():
-      per_second_dict[key] = {GetKey(list(val.keys())[0]):list(val.items())[0][1]}
+   # compiles and writes to dictionary
+   results_dict['uniqueId'] = my_clip.filename.split('video/')[1]
+   results_dict['totals'] = totals
+   results_dict['audioData'] = audioData
+   results_dict['audioGraph'] = []
 
    # Write seconds, class name, and probability to JSON
    with open(f'{output_path}/{file_name}.json', 'w+') as file:
-      json.dump(per_second_dict, file, ensure_ascii=False)
+      json.dump(results_dict, file, ensure_ascii=False)
 
 if __name__ == '__main__':
     print('^_^ BEGINNING AUDIO DETECTION ^_^')
-    audio_detection('video/fan_riot (1).mp4')
+    audio_detection('video/myanmar.mp4')
     print('CHECK THE JSON NEED I SAY MORE? O_o')
