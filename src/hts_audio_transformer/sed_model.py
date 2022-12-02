@@ -14,7 +14,7 @@ from sklearn import metrics
 import soundfile as sf
 from sklearn.metrics import average_precision_score, roc_auc_score, accuracy_score
 
-from utils import get_loss_func, get_mix_lambda, d_prime
+from .utils import get_loss_func, get_mix_lambda, d_prime # added period
 import tensorboard
 import torch
 import torchaudio
@@ -26,7 +26,7 @@ from torch.nn.parameter import Parameter
 import torch.distributed as dist
 from torchlibrosa.stft import STFT, ISTFT, magphase
 import pytorch_lightning as pl
-from utils import do_mixup, get_mix_lambda, do_mixup_label
+from .utils import do_mixup, get_mix_lambda, do_mixup_label # added period
 import random
 
 from torchcontrib.optim import SWA
@@ -55,7 +55,7 @@ class SEDWrapper(pl.LightningModule):
         return output_dict["clipwise_output"], output_dict["framewise_output"]
 
     def inference(self, x):
-        self.device_type = 'cpu' #next(self.parameters()).device
+        self.device_type = next(self.parameters()).device
         self.eval()
         x = torch.from_numpy(x).float().to(self.device_type)
         output_dict = self.sed_model(x, None, True)

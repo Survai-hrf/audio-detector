@@ -1,24 +1,23 @@
 import os
+import shutil
 import numpy as np
 import librosa
 import moviepy.editor as mp
 import json
 from collections import Counter
-# in the notebook, we only can use one GPU
-os.environ["CUDA_VISIBLE_DEVICES"]="0"
+
 
 # Load the model package
 import torch
-import config 
-from sed_model import SEDWrapper
-from model.htsat import HTSAT_Swin_Transformer
+from . import config
+from .sed_model import SEDWrapper
+from .model.htsat import HTSAT_Swin_Transformer
 
 
-output_path = 'video'
 
-
-def audio_detection(video_id):
+def audio_detection(video_id, folder, save_output):
    '''converts video to audio splits based on n seconds and performs audio detection'''
+   
    
    # Load model configs
    sed_model = HTSAT_Swin_Transformer(
@@ -48,15 +47,15 @@ def audio_detection(video_id):
 
    
    # AudioSet class list and model checkpoint
-   data = np.load('class_hier_map.npy', allow_pickle=True)
-   model_path = 'htsat_audioset_pretrain.ckpt'
+   data = np.load('./model_artifacts/class_hier_map.npy', allow_pickle=True)
+   model_path = './model_artifacts/htsat_audioset_pretrain.ckpt'
 
    
    class Audio_Classification:
       def __init__(self, model_path, config):
          super().__init__()
 
-         self.device = torch.device('cuda')
+         self.device = torch.device('cpu')
          self.sed_model = HTSAT_Swin_Transformer(
             spec_size=config.htsat_spec_size,
             patch_size=config.htsat_patch_size,
@@ -90,6 +89,7 @@ def audio_detection(video_id):
                pred_post = pred[0].detach().cpu().numpy()
                pred_label = np.argmax(pred_post)
                pred_prob = np.max(pred_post)
+
                # removes 'Speech' from classes
                if pred_label == 0:
                   pred_post = np.delete(pred_post, 0)
@@ -97,6 +97,7 @@ def audio_detection(video_id):
                   pred_prob = np.max(pred_post)
                   pred_label = np.argmax(np.delete(pred_post, 0))+1
                   pred_prob = np.max(np.delete(pred_post, 0))
+
                # removes 'Cap gun' from classes
                if pred_label == 431:
                     pred_post = np.delete(pred_post, 431)
@@ -122,7 +123,7 @@ def audio_detection(video_id):
       'Siren/Alarm': {"Fire alarm", "Emergency vehicle", "Civil defense siren", "Police car (siren)", "Fire engine, fire truck (siren)", "Alarm", "Ambulance (siren)"},
       'Coughing/Gasping': {"Snort", "Cough"},
       'Crying': {"Crying, sobbing"},
-      'Helicopter': {"Helicopter"},
+      'Helicopter Noise': {"Helicopter"},
       'Conversation': {"Conversation"},
       'Crowd Noise': {"Crowd"},
       'Yelling': {"Battle cry", "Yell"},
@@ -131,34 +132,52 @@ def audio_detection(video_id):
       'Vehicle Noise': {"Motorcycle", "Race car, auto racing", "Vehicle", "Car", "Motor vehicle (road)", "Accelerating, revving, vroom"}
    }
 
-   
+
+   video_file = f'{video_id}.mp4'
+
+
+   if folder == '':
+      video_file = f'temp_videodata_storage/{video_file}'
+   else:
+      # make directory to store audio data
+      video_file = folder
 
    # seconds audio is split by
-   n=3
+   n = 3
 
-   my_clip = mp.VideoFileClip(video_id)
+   my_clip = mp.VideoFileClip(video_file)
    remainder = int(my_clip.duration % n)
    int_seg = int(my_clip.duration - remainder)
    durations = list(range(0, int_seg+n, n))
    paired_durations = [[x, y] for x, y in zip(durations, durations[1:])]
-   file_name = my_clip.filename.split('video/')[1].split('.')[0]
-   file_name = file_name.replace('_', '')
+   file_name = my_clip.filename.split('/')[1].split('.')[0]
+   
 
-   os.makedirs(f'video/{file_name}', exist_ok=True)
+   # creates temp audio folder  
+   TEMP_AUDIO_STORAGE = 'src/hts_audio_transformer/audio_temp' 
+   os.makedirs(TEMP_AUDIO_STORAGE, exist_ok=True)
+
+   
 
    # creates audio splits
+   print('splitting audio')
+   
    for i in paired_durations:
       clips = my_clip.audio.subclip(t_start=i[0], t_end=i[1])
-      clips.write_audiofile(f'video/{file_name}/{file_name}_{i[0]}_{i[1]}.wav', logger=None)
+      clips.write_audiofile(f'{TEMP_AUDIO_STORAGE}/{file_name}_{i[0]}_{i[1]}.wav', logger=None)
 
-   # creates audio clip of remaining duration in video
+   # clips remainder of audio file
    if remainder > 0:
       remainder_clip = my_clip.audio.subclip(t_start=paired_durations[-1][1], t_end=paired_durations[-1][1]+remainder)
-      remainder_clip.write_audiofile(f'video/{file_name}/{file_name}_{paired_durations[-1][1]}_{paired_durations[-1][1]+remainder}.wav', logger=None)
-    
+      remainder_clip.write_audiofile(f'{TEMP_AUDIO_STORAGE}/{file_name}_{paired_durations[-1][1]}_{paired_durations[-1][1]+remainder}.wav', logger=None)
+   
+
    def extract_integer(filename):
       '''reformats audio clip name in dir for proper sorting'''
       return int(filename.split('.')[0].split('_')[1])
+   
+   audio_list = sorted(os.listdir(TEMP_AUDIO_STORAGE), key=extract_integer)
+
 
    def GetKey(val):
       '''returns key of filtered_classes'''
@@ -166,16 +185,17 @@ def audio_detection(video_id):
          if val in value:
             return key
 
-   audio_list = sorted(os.listdir(f'video/{file_name}'), key=extract_integer)
-
-   # performs audio classification on clips in directory
+  
    results_dict = {}
    unfiltered = []
-   # performs audio classification on clips in directory
+   # performs audio detection on clips in directory
+   print('performing audio detection')
+
    Audiocls = Audio_Classification(model_path, config)
    for clip in audio_list:
-      pred_label, pred_prob = Audiocls.predict(f'video/{file_name}/{clip}')
+      pred_label, pred_prob = Audiocls.predict(f'{TEMP_AUDIO_STORAGE}/{clip}')
       unfiltered.append((clip, data[pred_label][0]))
+
 
    filtered = []
    # converts class detections to per second 
@@ -184,22 +204,32 @@ def audio_detection(video_id):
       for sec in range(int(slice_ts[0]), int(slice_ts[-1])):
          filtered.append((sec+1, entry[1]))
 
-   # filters to only classes in filtered_classes
+
+   # filters to only classes inside filtered_classes
    audioData = [(i[0], GetKey(i[1])) for i in filtered if i[1] in classes]
-   # Counts # of detections per class 
+   # totals number of detections per class 
    totals = dict(Counter([i[1] for i in audioData]))
 
-   # compiles and writes to dictionary
+
+   # compiles dictionary
    results_dict['uniqueId'] = my_clip.filename.split('video/')[1]
    results_dict['totals'] = totals
    results_dict['audioData'] = audioData
    results_dict['audioGraph'] = []
 
-   # Write seconds, class name, and probability to JSON
-   with open(f'{output_path}/{file_name}.json', 'w+') as file:
-      json.dump(results_dict, file, ensure_ascii=False)
 
-if __name__ == '__main__':
-    print('^_^ BEGINNING AUDIO DETECTION ^_^')
-    audio_detection('video/myanmar.mp4')
-    print('CHECK THE JSON NEED I SAY MORE? O_o')
+   # exports data to json file
+   if save_output == True:
+      print('exporting to JSON file')
+      if not os.path.exists('output_files'):
+         os.mkdir('output_files') 
+      with open(f'output_files/{file_name}.json', 'w+') as file:
+         json.dump(results_dict, file, ensure_ascii=False)
+      
+       
+   # removes temp audio files 
+   shutil.rmtree(TEMP_AUDIO_STORAGE)
+   print("audio clips removed")
+
+   return results_dict
+
