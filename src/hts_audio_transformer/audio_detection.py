@@ -151,6 +151,7 @@ def audio_detection(video_id, folder, save_output):
    durations = list(range(0, int_seg+n, n))
    paired_durations = [[x, y] for x, y in zip(durations, durations[1:])]
    file_name = my_clip.filename.split('/')[1].split('.')[0]
+   file_name = file_name.replace('_', '')
    
 
    # creates temp audio folder  
