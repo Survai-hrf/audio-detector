@@ -124,7 +124,6 @@ def audio_detection(video_id, folder, save_output):
       'Coughing/Gasping': {"Snort", "Cough"},
       'Crying': {"Crying, sobbing"},
       'Helicopter Noise': {"Helicopter"},
-      'Conversation': {"Conversation"},
       'Crowd Noise': {"Crowd"},
       'Yelling': {"Battle cry", "Yell"},
       'Horn': {"Toot"},
@@ -207,13 +206,13 @@ def audio_detection(video_id, folder, save_output):
 
 
    # filters to only classes inside filtered_classes
-   audioData = [(i[0], GetKey(i[1])) for i in filtered if i[1] in classes]
+   audioData = {i[0]: {GetKey(i[1]): 1} for i in filtered if i[1] in classes}
    # totals number of detections per class 
-   totals = dict(Counter([i[1] for i in audioData]))
+   totals = dict(Counter([list(j.keys())[0] for i, j in audioData.items()]))
 
 
    # compiles dictionary
-   results_dict['uniqueId'] = my_clip.filename.split('video/')[1]
+   results_dict['uniqueId'] = my_clip.filename.split('/')[-1]
    results_dict['totals'] = totals
    results_dict['audioData'] = audioData
    results_dict['audioGraph'] = []
