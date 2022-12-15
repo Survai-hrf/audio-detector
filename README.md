@@ -30,7 +30,7 @@ if you would like to utilize **GPU**:
 
 **2)** Visit [Pytorch](https://pytorch.org/) and follow the installation guide for **GPU** packages
 
-**3)** Once installed, inside ```audio_detection.py``` under ```class Audio_Classification``` change ```self.device = torch.device('cpu')``` to ```self.device = torch.device('cuda')```
+**3)** Once installed, inside ```src/hts-audio-transformer/audio_detection.py``` under ```class Audio_Classification``` change ```self.device = torch.device('cpu')``` to ```self.device = torch.device('cuda')```
 
 ## Model Artifacts
 Two files will be necessary in order for the script to run:
