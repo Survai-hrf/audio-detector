@@ -99,27 +99,27 @@ def audio_detection(video_id, folder, save_output):
                   pred_prob = np.max(np.delete(pred_post, 0))
 
                # removes 'Cap gun' from classes
-               if pred_label == 431:
-                    pred_post = np.delete(pred_post, 431)
-                    pred_label = np.argmax(pred_post)
-                    pred_prob = np.max(pred_post)
-                    pred_label = np.argmax(np.delete(pred_post, 431))+1
-                    pred_prob = np.max(np.delete(pred_post, 431))
+               # if pred_label == 431:
+               #      pred_post = np.delete(pred_post, 431)
+               #      pred_label = np.argmax(pred_post)
+               #      pred_prob = np.max(pred_post)
+               #      pred_label = np.argmax(np.delete(pred_post, 431))+1
+               #      pred_prob = np.max(np.delete(pred_post, 431)) 
             return pred_label, pred_prob
 
-
+   
 
    # lists of classes to include
    classes = ["Emergency vehicle", "Gunshot, gunfire", "Helicopter", "Fireworks", "Explosion", 
            "Civil defense siren", "Cough", "Motorcycle", "Race car, auto racing", 
            "Crying, sobbing", "Fire alarm", 'Vehicle', "Car", "Motor vehicle (road)",
            "Skidding", "Battle cry", "Accelerating, revving, vroom", "Police car (siren)",
-           "Fire engine, fire truck (siren)", "Conversation", "Artillery fire", "Alarm",
+           "Fire engine, fire truck (siren)", "Artillery fire", "Alarm",
            "Machine gun", "Crowd", "Ambulance (siren)", "Firecracker", "Whip", "Toot" "Snort",
            "Cap gun", "Fusillade", "Yell"]
 
    filtered_classes = {
-      'Gunshot/Boom': {"Gunshot, gunfire", "Fireworks", "Explosion", "Artillery fire", "Machine gun", "Firecracker", "Whip", "Cap gun", "Fusillade",},
+      'Gunshot/Boom': {"Gunshot, gunfire", "Fireworks", "Explosion", "Artillery fire", "Cap gun", "Machine gun", "Firecracker", "Whip", "Fusillade"},
       'Siren/Alarm': {"Fire alarm", "Emergency vehicle", "Civil defense siren", "Police car (siren)", "Fire engine, fire truck (siren)", "Alarm", "Ambulance (siren)"},
       'Coughing/Gasping': {"Snort", "Cough"},
       'Crying': {"Crying, sobbing"},
@@ -214,8 +214,8 @@ def audio_detection(video_id, folder, save_output):
    # compiles dictionary
    results_dict['uniqueId'] = my_clip.filename.split('/')[-1]
    results_dict['totals'] = totals
-   results_dict['audioData'] = audioData
-   results_dict['audioGraph'] = []
+   results_dict['seconds'] = audioData
+   results_dict['videoInfo'] = {'videoLength' : int(my_clip.duration)}
 
 
    # exports data to json file

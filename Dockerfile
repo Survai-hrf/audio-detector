@@ -1,3 +1,4 @@
+# NOTICE: THIS IS NOT FUNCTIONAL
 FROM nvidia/cuda:11.3.1-base-ubuntu20.04
 
 RUN apt-get update -y
