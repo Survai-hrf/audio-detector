@@ -44,7 +44,7 @@ def process_video(video_id, folder, save_output):
 
         if folder == '':
             #send json to web
-            #API_ENDPOINT = "https://glimpse-ouqbsh7ia-survai.vercel.app/api/audio-detections"
+            #API_ENDPOINT = ""
             #r = requests.post(url=API_ENDPOINT, json=transcript)
             print("data sent to AWS")
 
