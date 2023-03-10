@@ -3,4 +3,9 @@
 *.json
 *.env
 *.ckpt
+*.csv
+*.xlsx
 __pycache__/
+
+local_projects
+peru.ipynb
